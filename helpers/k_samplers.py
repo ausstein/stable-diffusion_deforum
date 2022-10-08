@@ -3,6 +3,8 @@ import torch
 from k_diffusion.external import CompVisDenoiser
 from k_diffusion import sampling
 from torch import nn
+from skimage.transform import warp
+import numpy as np
 
 class CFGDenoiser(nn.Module):
     def __init__(self, model):
@@ -29,17 +31,20 @@ def sampler_fn(
     else torch.device("cuda"),
     cb: Callable[[Any], None] = None,
 ) -> torch.Tensor:
-    print('Changes Accepted')
     shape = [args.C, args.H // args.f, args.W // args.f]
     sigmas: torch.Tensor = model_wrap.get_sigmas(args.steps)
     sigmas = sigmas[len(sigmas) - t_enc - 1 :]
-    if not (args.prev_noise == None):
+    if args.prev_noise == None or not args.optical_flow:
       noise=torch.randn([args.n_samples, *shape], device=device) * sigmas[0]
-      print('Changes Accepted')
       args.prev_noise=noise
     else:
-      noise=args.prev_noise
-      print('Keeping noise')
+      noise=args.prev_noise.cpu().numpy()
+      v,u,row_coords,col_coords = args.optical_flow_warp_parameters
+      for i in range(4):
+        noise[0,i,:,:]=warp(noise[0,i,:,:],np.array([row_coords + v, col_coords + u]),
+                   mode='edge',preserve_range=True)
+      noise=torch.tensor(noise).to(device)
+      print('Optical FLow applied to noise')
     if args.use_init:
         if len(sigmas) > 0:
             x = (
