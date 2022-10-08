@@ -29,20 +29,28 @@ def sampler_fn(
     else torch.device("cuda"),
     cb: Callable[[Any], None] = None,
 ) -> torch.Tensor:
+    print('Changes Accepted')
     shape = [args.C, args.H // args.f, args.W // args.f]
     sigmas: torch.Tensor = model_wrap.get_sigmas(args.steps)
     sigmas = sigmas[len(sigmas) - t_enc - 1 :]
+    if not (args.prev_noise == None):
+      noise=torch.randn([args.n_samples, *shape], device=device) * sigmas[0]
+      print('Changes Accepted')
+      args.prev_noise=noise
+    else:
+      noise=args.prev_noise
+      print('Keeping noise')
     if args.use_init:
         if len(sigmas) > 0:
             x = (
                 init_latent
-                + torch.randn([args.n_samples, *shape], device=device) * sigmas[0]
+                + noise
             )
         else:
             x = init_latent
     else:
         if len(sigmas) > 0:
-            x = torch.randn([args.n_samples, *shape], device=device) * sigmas[0]
+            x = noise
         else:
             x = torch.zeros([args.n_samples, *shape], device=device)
     sampler_args = {
