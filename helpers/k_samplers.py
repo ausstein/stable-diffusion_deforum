@@ -44,6 +44,7 @@ def sampler_fn(
         noise[0,i,:,:]=warp(noise[0,i,:,:],np.array([row_coords + v, col_coords + u]),
                    mode='edge',preserve_range=True)
       noise=torch.tensor(noise).to(device)
+      args.prev_noise=noise
       print('Optical FLow applied to noise')
     if args.use_init:
         if len(sigmas) > 0:
